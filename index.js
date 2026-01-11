@@ -19,10 +19,6 @@ function getDimensions() {
   return { width, height };
 }
 
-// const height = document.documentElement.clientHeight - 5;
-// const width = height * 640 / 960;
-// const width = document.documentElement.clientWidth - 5;
-// const height = width * 960 / 640;
 const { width, height } = getDimensions();
 const spanX = (n) => { return Math.floor(n * width / 12); }
 const spanY = (n) => { return Math.floor(n * height / 12); }
@@ -48,12 +44,20 @@ const next_level = () => {
 };
 
 // 2点間の距離計算
+// const distance = (p1, p2) => {
+//   const dx = p1.x - p2.x;
+//   const dy = p1.y - p2.y;
+//   const len = Math.sqrt(dx * dx + dy * dy);
+//   return len;
+// };
+
+// ボールとボールの距離を測る関数
 const distance = (p1, p2) => {
   const dx = p1.x - p2.x;
   const dy = p1.y - p2.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  return len;
-};
+  return Math.hypot(dx, dy);
+}
+
 
 const drawWorld = (g, bodies) => {
   for (const body of bodies) {
@@ -92,9 +96,10 @@ const render = Render.create({
 // 枠をつくる
 const world = engine.world;
 Composite.add(world, [
-    Bodies.rectangle(spanX(1), spanY(6), spanX(2) - spanX(1), spanY(11), { isStatic: true }),
-    Bodies.rectangle(spanX(11), spanY(6), spanX(2) - spanX(1), spanY(11), { isStatic: true }),
-    Bodies.rectangle(spanX(6), spanY(11), spanX(11), spanY(2) - spanY(1), { isStatic: true })
+    Bodies.rectangle(spanX(0), spanY(6), spanX(2) - spanX(1.5), spanY(12), { isStatic: true }),
+    Bodies.rectangle(spanX(12), spanY(6), spanX(2) - spanX(1.5), spanY(12), { isStatic: true }),
+    Bodies.rectangle(spanX(6), spanY(0), spanX(12), spanY(2) - spanY(1.5), { isStatic: true }),
+    Bodies.rectangle(spanX(6), spanY(12), spanX(12), spanY(2) - spanY(1.5), { isStatic: true })
 ]);
 
 // add mouse control
@@ -110,100 +115,67 @@ var mouseConstraint = MouseConstraint.create(engine, {
 });
 Composite.add(world, mouseConstraint);
 
-var cursor, next_ball;
-const putCursor = () => {
-  var x = spanX(6);
-  if(cursor){
-    // because changing cursor size(radius) didn't work properly, remove and add again.
-    x = cursor.position.x;
-    Composite.remove(world, cursor);
-    Composite.remove(world, next_ball);
-  }
-  cursor = Bodies.circle(x, spanY(1), sizes[nexts[0]].r, {
-    isStatic: true,
-  });
-  cursor.render.fillStyle = sizes[nexts[0]].color;
-  cursor.collisionFilter = {
-    group: -1,
-  };
-  Composite.add(world, cursor);
-  next_ball = Bodies.circle(spanX(11), spanY(1), sizes[nexts[1]].r, {
-    isStatic: true,
-  });
-  next_ball.render.fillStyle = sizes[nexts[1]].color;
-  next_ball.collisionFilter = {
-    group: -1,
-  };
-  Composite.add(world, next_ball);
-};
-putCursor(); // Initialize
-
-Events.on(mouseConstraint, 'mouseup', function(event) {
-  var mousePosition = event.mouse.position;
+// ランダムに10個のボールを落とす
+for (let i = 0; i < 200; i++) {
+  const level = rnd(sizes.length / 4);
   const options = {
-      friction: 1,
-      frictionAir: 0.03,
-      density: .001, // 密度
-      restitution: 0.1, // 反発係数
-    };
-  const level = next_level();
+    friction: 1,
+    frictionAir: 0.03,
+    density: .001, // 密度
+    restitution: 0.1, // 反発係数
+  };
   const w = sizes[level].r;
-  const c = Bodies.circle(mousePosition.x, 50, w, options)
+  const c = Bodies.circle(rnd(width - 20) + 10, rnd(50), w, options)
   c.render.fillStyle = sizes[level].color;
   c.level = level;
   Composite.add(world, c);
   balls.push(c);
-  // update cursor(next ball)
-  putCursor();
-});
-
-Events.on(mouseConstraint, 'mousemove', function(event) {
-  const x = event.mouse.position.x;
-  //if (x < 200 || x > 500) return;
-  cursor.position.x = x;
-});
+}
 
 Render.run(render);
 const runner = Runner.create();
 Runner.run(runner, engine);
 
-// setInterval(() => {
-//   // 同サイズのくっついていたら合体
-//   const newballs = [];  
-//   for (let i = 0; i < balls.length - 1; i++) {
-//     const b1 = balls[i];
-//     if (!b1) continue;
-//     for (let j = i + 1; j < balls.length; j++) {
-//       const b2 = balls[j];
-//       if (!b2) continue;
-//       if (b1.level == b2.level && distance(b1.position, b2.position) <= b1.circleRadius * 2.01) {
-//         balls[j] = null;
-//         balls[i] = null;
-//         Composite.remove(world, b1);
-//         Composite.remove(world, b2);
-//         const nt = sizes[b1.level + 1];
-//         if (nt) {
-//           const x = (b1.position.x + b2.position.x) / 2;
-//           const y = (b1.position.y + b2.position.y) / 2;
-//           const w = nt.r;
-//           const b = Bodies.circle(x, y, w);
-//           b.render.fillStyle = nt.color;
-//           b.size = w;
-//           b.level = b1.level + 1;
-//           newballs.push(b);
-//         }
-//         break;
-//       }
-//     }
-//   }
-//   for (let i = 0; i < balls.length; i++) {
-//     if (!balls[i]) {
-//       balls.splice(i, 1);
-//       i--;
-//     }
-//   }
-//   for (const b of newballs) {
-//     balls.push(b);
-//     Composite.add(world,b);
-//   }
-// }, 1000 / 4);
+// 同じサイズでくっついるボールをグループとしてグループ分けする再帰関数
+const check = () => {
+  const visited = new Set();
+  const groups = [];
+  for (const ball of balls) {
+    if (visited.has(ball)) continue;
+    const group = [];
+    const q = [ball];
+    while (q.length) {
+      const b = q.shift();
+      visited.add(b);
+      group.push(b);
+      for (const b2 of balls) {
+        if (visited.has(b2)) continue;
+        if (b.level === b2.level && distance(b.position, b2.position) <= b.circleRadius * 2.01) {
+          q.push(b2);
+          visited.add(b2);
+        }
+      }
+    }
+    groups.push(group);
+  }
+
+  // ボールの数が5個のグループは削除
+  for (const group of groups) {
+    if (group.length === 5) {
+      for (const b of group) {
+        Composite.remove(world, b);
+        const index = balls.indexOf(b);
+        if (index !== -1) {
+          balls.splice(index, 1);
+        }
+      }
+    }
+  }
+  return groups;
+}
+
+
+setInterval(() => {
+  check();
+}, 1000);
+
