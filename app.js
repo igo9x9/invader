@@ -797,8 +797,7 @@ phina.define('GameScene', {
     update: function() {
         const self = this;
         this.timer += 1;
-        // if (this.timer % 5 !== 0) {
-        if (this.timer % 1 !== 0) {
+        if (this.timer % 5 !== 0) {
             return;
         }
 
