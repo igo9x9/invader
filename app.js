@@ -34,6 +34,11 @@ phina.define('GameScene', {
 
         this.points = 0;
 
+        let lastDamage = 0;
+        let killCount = 0;
+
+        this.gameOver = false;
+
         self.baseLayer = RectangleShape({
             fill: "transparent",
             strokeWidth: 0,
@@ -52,26 +57,23 @@ phina.define('GameScene', {
             height: self.height,
         }).addChildTo(self).setPosition(self.gridX.center(), self.gridY.center());
 
-        const deadLine = RectangleShape({
+        self.deadLine = RectangleShape({
             fill: "green",
             strokeWidth: 0,
-            width: self.width,
+            width: self.animationLayer.width,
             height: 10,
-        }).setPosition(self.gridX.center(), self.gridY.center(7)).addChildTo(self);
+        }).setPosition(0, -130).addChildTo(self.animationLayer);
 
         createEnemy = function() {
-            let enemy;
             let hp;
-            if (self.points < 2) {
-                enemy = Sprite("enemy1").addChildTo(self.animationLayer);
+            if (killCount < 5) {
                 hp = 1;
-            } else if (self.points < 5) {
-                enemy = Sprite("enemy2").addChildTo(self.animationLayer);
-                hp = 2;
+            } else if (killCount < 15) {
+                hp = Math.randint(1, 2);
             } else {
-                enemy = Sprite("enemy3").addChildTo(self.animationLayer);
-                hp = 3;
+                hp = Math.randint(1, 3);
             }
+            const enemy = Sprite("enemy" + hp).addChildTo(self.animationLayer);
             const xrange = self.animationLayer.width / 2 - enemy.width / 2;
             const x = Math.floor(Math.random() * xrange) - xrange / 2;
             enemy.setPosition(x, -1 * self.animationLayer.height / 2);
@@ -79,14 +81,17 @@ phina.define('GameScene', {
         }
         createEnemy();
 
+        self.createEnemy = createEnemy;
+
         const pointLabel = LabelArea({
             text: "SCORE: 0",
             fontSize: 32,
+            fontWeight: "bold",
             fill: "white",
             height: 30,
-            width: 200,
+            width: self.width,
             align: "right",
-            x: self.gridX.center(4),
+            x: self.gridX.center(),
             y: self.gridY.center(-7.5),
         }).addChildTo(self.baseLayer);
 
@@ -255,8 +260,11 @@ phina.define('GameScene', {
             let prisonerAll = 0;    /* 取り除かれた石の総数 */
             let koFlag = false;     /* 劫かどうか */
 
+            let uttegaeshi = false; /* ウッテガエシかどうか */
+
             if (uttegaeshi_x === x && uttegaeshi_y === y) {
-                alert("ウッテガエシ！");
+                // alert("ウッテガエシ！");
+                uttegaeshi = true;
             } else {
                 uttegaeshi_x = 0;
                 uttegaeshi_y = 0;
@@ -339,6 +347,13 @@ phina.define('GameScene', {
 
             // ダメージポイントのアニメーション
             damagePointAnimation(prisonerAll);
+            lastDamage = prisonerAll;
+            if (uttegaeshi) {
+                flashGoban();
+                initBoard();
+                uttegaeshi_x = 0;
+                uttegaeshi_y = 0;
+            }
 
         }
 
@@ -491,17 +506,34 @@ phina.define('GameScene', {
         // 盤面を表示する
         function showAllStones() {
 
+            let cont = 0;
+
             self.banLayer.children.clear();
 
             for (let y = 1; y < BOARD_SIZE + 1; y++) {
                 for (let x = 1; x < BOARD_SIZE + 1; x++) {
                     if (board[y][x] === BLACK) {
                         drawStone("black", x - 1, y - 1, true);
+                        cont++;
                     } else if (board[y][x] === WHITE) {
                         drawStone("white", x - 1, y - 1, true);
+                        cont++;
                     }
                 }
             }
+
+            return cont;
+        }
+
+        // 碁盤を一瞬光らせる
+        function flashGoban() {
+            const flash = RectangleShape({
+                fill: "yellow",
+                width: self.ban.width,
+                height: self.ban.height,
+                strokeWidth: 0,
+            }).addChildTo(self.baseLayer).setPosition(self.gridX.center(), self.gridY.center(3));
+            flash.tweener.to({alpha: 0}, 1000, "easeOutCirc").call(() => { flash.remove(); }).play();
         }
 
         // 碁盤を描画
@@ -513,7 +545,7 @@ phina.define('GameScene', {
                 width: 630,
                 height: 630,
                 strokeWidth: 0,
-            }).addChildTo(self.baseLayer).setPosition(self.gridX.center(), self.gridY.center());
+            }).addChildTo(self.baseLayer).setPosition(self.gridX.center(), self.gridY.center(3));
             const grid = Grid({width: self.ban.width - ((19 - size) * 6 + 50), columns: size - 1});
 
             const floor = Math.floor(size / 2);
@@ -521,9 +553,9 @@ phina.define('GameScene', {
                 var startPoint = Vector2((spanX - floor) * grid.unitWidth, -1 * grid.width / 2),
                     endPoint = Vector2((spanX - floor) * grid.unitWidth, grid.width / 2);
         
-                let strokeWidth = size === 9 ? 2 : 1.5;
+                let strokeWidth = size === 9 ? 1 : 1.5;
                 if (spanX === 0 || spanX === size - 1) {
-                    strokeWidth = strokeWidth * 2;
+                    strokeWidth = strokeWidth * 1.5;
                 }
                 PathShape({paths:[startPoint, endPoint], stroke: "white", strokeWidth: strokeWidth}).addChildTo(self.ban);
             });
@@ -532,9 +564,9 @@ phina.define('GameScene', {
                 var startPoint = Vector2(-1 * grid.width / 2, (spanY - floor) * grid.unitWidth),
                     endPoint = Vector2(grid.width / 2, (spanY - floor) * grid.unitWidth);
                 
-                let strokeWidth = size === 9 ? 2 : 1.5;
+                let strokeWidth = size === 9 ? 1 : 1.5;
                 if (spanY === 0 || spanY === size - 1) {
-                    strokeWidth = strokeWidth * 2;
+                    strokeWidth = strokeWidth * 1.5;
                 }
                 PathShape({paths:[startPoint, endPoint], stroke: "white", strokeWidth: strokeWidth}).addChildTo(self.ban);
             });
@@ -611,7 +643,9 @@ phina.define('GameScene', {
                         // 合法手かどうか調べる
                         if (checkLegal(nextColor, xx, yy)) {
                             setStone(nextColor, xx, yy);
-                            showAllStones();
+                            if (showAllStones() > 0) {
+                                drawLastMarker(x, y);
+                            }
                             nextColor = nextColor === BLACK ? WHITE : BLACK;
                             move += 1;
                         }
@@ -619,6 +653,19 @@ phina.define('GameScene', {
                 }
             }
         }
+
+        // 最終手に赤●を付ける
+        function drawLastMarker(x, y) {
+            const floor = Math.floor(self.banLayer.size / 2);
+
+            const marker = CircleShape({
+                fill: "darkred",
+                radius: 8,
+                strokeWidth: 0,
+            });
+            marker.addChildTo(self.banLayer).setPosition(self.banLayer.grid.span(x - floor), self.banLayer.grid.span(y - floor));
+        };
+
 
         // 石を描画
         function drawStone(color, x, y, show) {
@@ -645,7 +692,7 @@ phina.define('GameScene', {
                 strokeWidth: 0,
             }).addChildTo(self.animationLayer).setPosition(
                 self.banLayer.grid.span(fromX - floor) - self.banLayer.grid.unitWidth,
-                self.banLayer.grid.span(fromY - floor) - 62);
+                self.banLayer.grid.span(fromY - floor) + 120);
 
             // 玉の飛び先は、Y座標が一番大きいenemyの位置
             const topEnemy = getTopEnemy();
@@ -659,7 +706,7 @@ phina.define('GameScene', {
             //     .play();
 
             tama.tweener
-                .to({scaleX: 1.5, scaleY: 1.5}, 300, "easeOutCirc")
+                .to({scaleX: 1.2, scaleY: 1.2}, 300, "easeOutCirc")
                 .to({x: toX, y: toY, scaleX: 0.1, scaleY: 0.1}, 200, "easeInCirc")
                 .call(() => {
                     tama.remove();
@@ -726,8 +773,21 @@ phina.define('GameScene', {
             if (index > -1) {
                 self.enemies.splice(index, 1);
                 topEnemy.splite.remove();
-                self.points += 1;
+                self.points += lastDamage;
+                killCount += 1;
                 updatePointLabel();
+
+                // 爆発アニメーション
+                const explosion = CircleShape({
+                    fill: "orange",
+                    radius: 10,
+                    strokeWidth: 0,
+                }).addChildTo(self.animationLayer).setPosition(topEnemy.splite.x, topEnemy.splite.y);
+                explosion.tweener
+                    .to({scaleX: 5, scaleY: 5, alpha: 0}, 800, "easeOutCirc")
+                    .call(() => {
+                        explosion.remove();
+                    }).play();
             }
             return true;
         }
@@ -735,17 +795,91 @@ phina.define('GameScene', {
     },
 
     update: function() {
+        const self = this;
         this.timer += 1;
-        if (this.timer % 4 !== 0) {
+        // if (this.timer % 5 !== 0) {
+        if (this.timer % 1 !== 0) {
             return;
         }
+
+        if (this.gameOver) {
+            return;
+        }
+
         // 全ての敵のY座標を1増やす
         this.enemies.forEach(enemy => {
             enemy.splite.y += 1;
         });
+
+        // 敵がデッドラインを越えたらゲームオーバー
+        this.enemies.forEach(enemy => {
+            if (enemy.splite.hitTestElement(self.deadLine)) {
+                self.deadLine.fill = "red";
+                self.gameOver = true;
+                setTimeout(() => {
+                    App.pushScene(GameOverScene());
+                }, 1);
+                self.one("resume", () => {
+                    self.exit("TitleScene");
+                });
+            }
+        });
     },
 
 });
+
+phina.define('GameOverScene', {
+    superClass: 'DisplayScene',
+    init: function(param/*{}*/) {
+        this.superInit(param);
+
+        const self = this;
+
+        this.backgroundColor = "transparent";
+
+        Label({
+            text: "GAME OVER",
+            fontSize: 100,
+            fill: "white",
+            fontWeight: "bold",
+            stroke: "black",
+            strokeWidth: 8,
+        }).addChildTo(this).setPosition(this.gridX.center(), this.gridY.center());
+
+        setTimeout(() => {
+            self.on("pointstart", function() {
+                self.exit("TitleScene");
+            });
+        }, 3000);
+
+    },
+});
+
+phina.define('TitleScene', {
+    superClass: 'DisplayScene',
+  
+    init: function(options) {
+        this.superInit(options);
+
+        const self = this;
+
+        this.backgroundColor = "black";
+
+        Label({
+            text: "囲碁\nインベーダー",
+            fill: "white",
+            fontWeight: 800,
+            fontSize: 50,
+        }).addChildTo(this).setPosition(this.gridX.center(), this.gridY.center(0.8));
+
+        this.on("pointstart", function() {
+            self.exit("GameScene");
+        });
+
+    },
+
+});
+
 
 ASSETS = {
     image: {
@@ -758,12 +892,12 @@ ASSETS = {
 phina.main(function() {
     App = GameApp({
         assets: ASSETS,
-        startLabel: 'GameScene',
+        startLabel: 'TitleScene',
         scenes: [
-            // {
-            //     label: 'TitleScene',
-            //     className: 'TitleScene',
-            // },
+            {
+                label: 'TitleScene',
+                className: 'TitleScene',
+            },
             {
                 label: 'GameScene',
                 className: 'GameScene',
