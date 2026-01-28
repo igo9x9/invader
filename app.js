@@ -29,6 +29,11 @@ phina.define('GameScene', {
         let uttegaeshi_x = 0;
         let uttegaeshi_y = 0;
 
+        this.enemies = [];
+        this.timer = 0;
+
+        this.points = 0;
+
         self.baseLayer = RectangleShape({
             fill: "transparent",
             strokeWidth: 0,
@@ -46,6 +51,41 @@ phina.define('GameScene', {
             width: self.width,
             height: self.height,
         }).addChildTo(self).setPosition(self.gridX.center(), self.gridY.center());
+
+        createEnemy = function() {
+            let enemy;
+            let hp;
+            if (self.points < 2) {
+                enemy = Sprite("enemy1").addChildTo(self.animationLayer);
+                hp = 1;
+            } else if (self.points < 5) {
+                enemy = Sprite("enemy2").addChildTo(self.animationLayer);
+                hp = 2;
+            } else {
+                enemy = Sprite("enemy3").addChildTo(self.animationLayer);
+                hp = 3;
+            }
+            const xrange = self.animationLayer.width / 2 - enemy.width / 2;
+            const x = Math.floor(Math.random() * xrange) - xrange / 2;
+            enemy.setPosition(x, -1 * self.animationLayer.height / 2);
+            self.enemies.push({splite:enemy, hp: hp});
+        }
+        createEnemy();
+
+        const pointLabel = LabelArea({
+            text: "得点: 0",
+            fontSize: 32,
+            fill: "white",
+            height: 30,
+            width: 200,
+            align: "right",
+            x: self.gridX.center(4),
+            y: self.gridY.center(-7.5),
+        }).addChildTo(self.baseLayer);
+
+        function updatePointLabel() {
+            pointLabel.text = "得点: " + self.points;
+        }
 
 
         // 碁盤
@@ -598,15 +638,20 @@ phina.define('GameScene', {
                 strokeWidth: 0,
             }).addChildTo(self.animationLayer).setPosition(self.banLayer.grid.span(fromX - floor) - self.banLayer.grid.unitWidth, self.banLayer.grid.span(fromY - floor) + 54);
 
-            self.animationLayer
-                .tweener
-                .by({x: 10}, 30).by({x: -10}, 30).by({x: 10}, 30).by({x: -10}, 30)
-                .by({x: 10}, 30).by({x: -10}, 30).by({x: 10}, 30).by({x: -10}, 30)
-                .play();
+            // 玉の飛び先は、Y座標が一番大きいenemyの位置
+            const topEnemy = getTopEnemy();
+            let toX = topEnemy.splite.x;
+            let toY = topEnemy.splite.y;
 
-                tama.tweener
+            // self.animationLayer
+            //     .tweener
+            //     .by({x: 10}, 30).by({x: -10}, 30).by({x: 10}, 30).by({x: -10}, 30)
+            //     .by({x: 10}, 30).by({x: -10}, 30).by({x: 10}, 30).by({x: -10}, 30)
+            //     .play();
+
+            tama.tweener
                 .to({scaleX: 1.5, scaleY: 1.5}, 300, "easeOutCirc")
-                .to({x: 0, y: -1 * self.height / 2, scaleX: 0.1, scaleY: 0.1}, 200, "easeInCirc")
+                .to({x: toX, y: toY, scaleX: 0.1, scaleY: 0.1}, 200, "easeInCirc")
                 .call(() => {
                     tama.remove();
                 }).play();
@@ -619,41 +664,91 @@ phina.define('GameScene', {
                 return;
             }
 
+            const topEnemy = getTopEnemy();
+            let toX = topEnemy.splite.x;
+            let toY = topEnemy.splite.y;
+
             const damageLabel = Label({
                 text: damage,
                 fontSize: 50 + damage * 5,
                 fontWeight: "bold",
                 fill: "white",
-                x: 0,
-                y: -1 * self.height / 2 + 100,
+                x: toX,
+                y: toY,
             }).addChildTo(self.animationLayer).hide();
 
             damageLabel.tweener
                 .wait(600)
                 .call(() => {
                     damageLabel.show();
+                    // topEnemyを削除する
+                    if (removeTopEnemy(damage)) {
+                        // 新しい敵を作る
+                        createEnemy();
+                    }
                 })
                 .by({y: -50}, 500, "easeOutCirc")
                 .call(() => {
                     damageLabel.remove();
                 }).play();
         }
+
+        // Y座標が一番大きいenemyを返す
+        function getTopEnemy() {
+            let topEnemy = null;
+            let maxY = -Infinity;
+            self.enemies.forEach(enemy => {
+                if (enemy.splite.y > maxY) {
+                    maxY = enemy.splite.y;
+                    topEnemy = enemy;
+                }
+            });
+            return topEnemy;
+        }
+
+        // Y座標が一番大きいenemyを削除する
+        function removeTopEnemy(damage) {
+            const topEnemy = getTopEnemy();
+
+            if (damage < topEnemy.hp) {
+                return false;
+            }
+            const index = self.enemies.indexOf(topEnemy);
+            if (index > -1) {
+                self.enemies.splice(index, 1);
+                topEnemy.splite.remove();
+                self.points += 1;
+                updatePointLabel();
+            }
+            return true;
+        }
+
+    },
+
+    update: function() {
+        this.timer += 1;
+        if (this.timer % 4 !== 0) {
+            return;
+        }
+        // 全ての敵のY座標を1増やす
+        this.enemies.forEach(enemy => {
+            enemy.splite.y += 1;
+        });
     },
 
 });
 
-// ASSETS = {
-//     image: {
-//         "arrow": "img/arrow.png",
-//         "mouse": "img/mouse.png",
-//         "mouse2": "img/mouse2.png",
-//         "frog": "img/frog.png",
-//     }
-// };
+ASSETS = {
+    image: {
+        "enemy1": "enemy1.png",
+        "enemy2": "enemy2.png",
+        "enemy3": "enemy3.png",
+    }
+};
 
 phina.main(function() {
     App = GameApp({
-        // assets: ASSETS,
+        assets: ASSETS,
         startLabel: 'GameScene',
         scenes: [
             // {
