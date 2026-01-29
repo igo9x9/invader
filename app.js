@@ -684,6 +684,16 @@ phina.define('GameScene', {
 
         // 指定した座標から玉が飛んでいくアニメーション
         function atackAnimation(fromX, fromY) {
+            // 玉の飛び先は、Y座標が一番大きいenemyの位置
+            const topEnemy = getTopEnemy();
+
+            // 敵がいない場合はなにもしない
+            if (!topEnemy) {
+                return;
+            }
+            let toX = topEnemy.splite.x;
+            let toY = topEnemy.splite.y;
+
             // 指定ざれた座標に玉を描画
             const floor = Math.floor(self.banLayer.size / 2);
             const tama = CircleShape({
@@ -694,10 +704,6 @@ phina.define('GameScene', {
                 self.banLayer.grid.span(fromX - floor) - self.banLayer.grid.unitWidth,
                 self.banLayer.grid.span(fromY - floor) + 120);
 
-            // 玉の飛び先は、Y座標が一番大きいenemyの位置
-            const topEnemy = getTopEnemy();
-            let toX = topEnemy.splite.x;
-            let toY = topEnemy.splite.y;
 
             // self.animationLayer
             //     .tweener
@@ -721,6 +727,12 @@ phina.define('GameScene', {
             }
 
             const topEnemy = getTopEnemy();
+
+            // 敵がいない場合はなにもしない
+            if (!topEnemy) {
+                return;
+            }
+
             let toX = topEnemy.splite.x;
             let toY = topEnemy.splite.y;
 
@@ -767,6 +779,11 @@ phina.define('GameScene', {
         // Y座標が一番大きいenemyを削除する
         function removeTopEnemy(damage) {
             const topEnemy = getTopEnemy();
+
+            // 敵がいない場合はなにもしない
+            if (!topEnemy) {
+                return;
+            }
 
             if (damage < topEnemy.hp) {
                 return false;
