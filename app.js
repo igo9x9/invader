@@ -7,6 +7,10 @@ const BLACK = 1;
 const WHITE = 2;
 const OUT = 3;
 
+let ko_x = 0;   // コウの位置X
+let ko_y = 0;   // コウの位置Y
+let ko_num = 0; // コウが発生した手数
+
 phina.define('GameScene', {
     superClass: 'DisplayScene',
     init: function(param/*{}*/) {
@@ -21,9 +25,6 @@ phina.define('GameScene', {
         let move = 1;   // 手数
         let black_prisoner = 0; // 黒アゲハマ
         let white_prisoner = 0; // 白アゲハマ
-        let ko_x = 0;   // コウの位置X
-        let ko_y = 0;   // コウの位置Y
-        let ko_num = 0; // コウが発生した手数
         let checkBoard = Array(BOARD_SIZE + 2); // 合法手かどうか調べるのに使う
         let nextColor = BLACK;
 
@@ -41,6 +42,8 @@ phina.define('GameScene', {
         let killCount = 0;
 
         this.gameOver = false;
+
+        this.ufo = false;
 
         self.baseLayer = RectangleShape({
             fill: "transparent",
@@ -89,7 +92,9 @@ phina.define('GameScene', {
         }).setPosition(0, -130).addChildTo(self.animationLayer);
 
         createEnemy = function() {
+
             let hp;
+
             if (killCount < 5) {
                 hp = 1;
             } else if (killCount < 15) {
@@ -97,9 +102,16 @@ phina.define('GameScene', {
             } else {
                 hp = Math.randint(1, 3);
             }
+
+            // killCountが10で割り切れるならufoを出す
+            if (self.ufo === false && killCount > 0 && killCount % 10 === 0) {
+                hp = 0;
+                self.ufo = true;
+            }
             const enemy = Sprite("enemy" + hp).addChildTo(self.animationLayer);
-            const x = Math.randint(-4, 4) * self.width / 10;
-            enemy.setPosition(x, -1 * self.animationLayer.height / 2 + enemy.height);
+            const x = hp === 0 ? -300 : Math.randint(-4, 4) * self.width / 10;
+            const y = hp === 0 ? -350 : -1 * self.animationLayer.height / 2 + enemy.height;
+            enemy.setPosition(x, y);
             self.enemies.push({splite:enemy, hp: hp, beams: 1});
         }
         createEnemy();
@@ -826,6 +838,9 @@ phina.define('GameScene', {
                 topEnemy.splite.remove();
                 self.points += lastDamage * 10;
                 killCount += 1;
+                if (topEnemy.hp === 0) {
+                    self.ufo = false;
+                }
                 updatePointLabel();
 
                 SoundManager.play('kill');
@@ -888,7 +903,21 @@ phina.define('GameScene', {
 
         // 全ての敵のY座標を1増やす
         this.enemies.forEach(enemy => {
-            enemy.splite.y += 1;
+            // hp=0の場合はx座標を1増やす
+            if (enemy.hp === 0) {
+                enemy.splite.x += 1;
+                if (enemy.splite.x > self.width / 2) {
+                    // 画面外に出たら削除
+                    const index = self.enemies.indexOf(enemy);
+                    if (index > -1) {
+                        self.enemies.splice(index, 1);
+                        enemy.splite.remove();
+                        self.ufo = false;
+                    }
+                }
+            } else {
+                enemy.splite.y += 1;
+            }
         });
 
         // 敵がデッドラインを越えたらゲームオーバー
@@ -909,7 +938,10 @@ phina.define('GameScene', {
 
         // 一定確率で敵がビームを発射
         this.enemies.forEach(enemy => {
-            const prob = 0.01;
+            let prob = 0.01;
+            if (enemy.hp === 0) {
+                prob = 0.05;
+            }
             if (Math.random() < prob) {
                 SoundManager.play('enemyShot');
                 const beam = RectangleShape({
@@ -941,7 +973,7 @@ phina.define('GameScene', {
                             explosion.remove();
                         }).play();
 
-                        // ビームを削除
+                    // ビームを削除
                     beam.remove();
                     // beamsから削除
                     const beamIndex = self.enemiesBeams.indexOf(beam);
@@ -956,6 +988,17 @@ phina.define('GameScene', {
                     if (index > -1) {
                         self.stones.splice(index, 1);
                         self.board[stone.y + 1][stone.x + 1] = SPACE;
+                    }
+
+                    // 削除した石の上下左右をチェックして、xとyがko_xとko_yならば劫を解除する
+                    if ((stone.x + 1 === ko_x && stone.y + 1 === ko_y) ||
+                        (stone.x + 1 - 1 === ko_x && stone.y + 1 === ko_y) ||
+                        (stone.x + 1 + 1 === ko_x && stone.y + 1 === ko_y) ||
+                        (stone.x + 1 === ko_x && stone.y + 1 - 1 === ko_y) ||
+                        (stone.x + 1 === ko_x && stone.y + 1 + 1 === ko_y)) {
+                        ko_x = -1;
+                        ko_y = -1;
+                        ko_num = -1;
                     }
                 }
             });
@@ -1089,6 +1132,7 @@ phina.define('TitleScene', {
 
 ASSETS = {
     image: {
+        "enemy0": "enemy0.png",
         "enemy1": "enemy1.png",
         "enemy2": "enemy2.png",
         "enemy3": "enemy3.png",
