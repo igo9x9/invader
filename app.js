@@ -848,7 +848,7 @@ phina.define('GameScene', {
             if (index > -1) {
                 self.enemies.splice(index, 1);
                 topEnemy.splite.remove();
-                self.points += lastDamage * 10;
+                self.points += Math.pow(lastDamage, 2) * 10;
                 killCount += 1;
                 if (topEnemy.hp === 0) {
                     self.ufo = false;
@@ -878,7 +878,7 @@ phina.define('GameScene', {
 
         // 全ての敵ビームのY座標を2増やす
         this.enemiesBeams.forEach(beam => {
-            beam.y += 2;
+            beam.y += 4;
         });
 
         // 全ての敵ビームのうち、Y座標が画面外に出たものを削除
@@ -930,9 +930,9 @@ phina.define('GameScene', {
 
         // 全ての敵のY座標を1増やす
         this.enemies.forEach(enemy => {
-            // hp=0の場合はx座標を1増やす
+            // hp=0の場合はx座標を5増やす
             if (enemy.hp === 0) {
-                enemy.splite.x += 1;
+                enemy.splite.x += 5;
                 if (enemy.splite.x > self.width / 2) {
                     // 画面外に出たら削除
                     const index = self.enemies.indexOf(enemy);
@@ -968,7 +968,7 @@ phina.define('GameScene', {
         this.enemies.forEach(enemy => {
             let prob = 0.01;
             if (enemy.hp === 0) {
-                prob = 0.03;
+                prob = 0.1;
             }
             if (Math.random() < prob) {
                 SoundManager.play('enemyShot');
