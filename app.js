@@ -104,16 +104,19 @@ phina.define('GameScene', {
                 hp = Math.randint(1, 3);
             }
 
-            // killCountが10で割り切れるならufoを出す
-            if (self.ufo === false && killCount > 0 && killCount % 10 === 0) {
-                hp = 0;
-                self.ufo = true;
-            }
             const enemy = Sprite("enemy" + hp).addChildTo(self.animationLayer);
-            const x = hp === 0 ? -300 : Math.randint(-4, 4) * self.width / 10;
-            const y = hp === 0 ? -350 : -1 * self.animationLayer.height / 2 + enemy.height;
+            const x = Math.randint(-4, 4) * self.width / 10;
+            const y = -1 * self.animationLayer.height / 2 + enemy.height;
             enemy.setPosition(x, y);
             self.enemies.push({splite:enemy, hp: hp, beams: 1});
+
+            // たまにufoを出す
+            if (self.ufo === false && killCount > 0 && killCount % 5 === 0) {
+                self.ufo = true;
+                const ufo = Sprite("enemy0").addChildTo(self.animationLayer);
+                ufo.setPosition(-300, -350);
+                self.enemies.push({splite:ufo, hp: 0, beams: 1});
+            }
         }
         createEnemy();
 
@@ -902,6 +905,11 @@ phina.define('GameScene', {
             this.createEnemy();
         }
 
+        // 敵が1でそれがUFOなら新しい敵を作る
+        if (this.enemies.length === 1 && this.enemies[0].hp === 0) {
+            this.createEnemy();
+        }
+
         // 全ての敵のY座標を1増やす
         this.enemies.forEach(enemy => {
             // hp=0の場合はx座標を1増やす
@@ -942,7 +950,7 @@ phina.define('GameScene', {
         this.enemies.forEach(enemy => {
             let prob = 0.01;
             if (enemy.hp === 0) {
-                prob = 0.05;
+                prob = 0.03;
             }
             if (Math.random() < prob) {
                 SoundManager.play('enemyShot');
@@ -982,10 +990,8 @@ phina.define('GameScene', {
                     if (beamIndex > -1) {
                         self.enemiesBeams.splice(beamIndex, 1);
                     }
-                    // beam.y = self.height; // 画面外に移動させてupdateで削除されるようにする
                     // 石を削除
                     stone.splite.remove();
-                    // stone.splite.y = self.height; // 画面外に移動させてupdateで削除されるようにする
                     const index = self.stones.indexOf(stone);
                     if (index > -1) {
                         self.stones.splice(index, 1);
@@ -1115,8 +1121,6 @@ phina.define('TitleScene', {
             "黒石と白石をバランスよく消そう！",
             "緑色の敵は、碁石を同時に２つ以上消せば倒せるぞ！",
             "黄色の敵は、碁石を同時に３つ以上消せば倒せるぞ！",
-            "コウを利用する方法もあるぞ！",
-            "UFOはすぐに倒さないほうがいいかも！",
         ];
         // 表示するヒントをランダムに決定
         const hint = hightScore === null
