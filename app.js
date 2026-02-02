@@ -46,6 +46,12 @@ phina.define('GameScene', {
 
         this.ufo = false;
 
+        // 初期化
+        ko_x = 0;
+        ko_y = 0;
+        ko_num = 0;
+        killCount = 0;
+
         self.baseLayer = RectangleShape({
             fill: "transparent",
             strokeWidth: 0,
