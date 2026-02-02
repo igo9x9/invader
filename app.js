@@ -11,6 +11,8 @@ let ko_x = 0;   // コウの位置X
 let ko_y = 0;   // コウの位置Y
 let ko_num = 0; // コウが発生した手数
 
+let killCount = 0;
+
 phina.define('GameScene', {
     superClass: 'DisplayScene',
     init: function(param/*{}*/) {
@@ -39,7 +41,6 @@ phina.define('GameScene', {
         this.points = 0;
 
         let lastDamage = 0;
-        let killCount = 0;
 
         this.gameOver = false;
 
@@ -913,6 +914,7 @@ phina.define('GameScene', {
                         self.enemies.splice(index, 1);
                         enemy.splite.remove();
                         self.ufo = false;
+                        killCount += 1;
                     }
                 }
             } else {
